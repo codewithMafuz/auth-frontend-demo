@@ -1,5 +1,5 @@
 import React from 'react';
-import GetStartedBanner from '../../../getStartedBanner/GetStartedBanner';
+import GetStartedBanner from '../../getStartedBanner/GetStartedBanner';
 
 const Home: React.FC = () => {
     return (

@@ -1,18 +1,41 @@
-const isValidSingleName = (name: string): boolean => name.length >= 2;
+const isValidSingleName = (name: string, returning: boolean = false): any => {
+    const pass = name.length >= 2;
+    if (returning) {
+        return name
+    }
+    return pass
+}
 
-const isValidFullName = (fullname: string): boolean => [2, 3].includes(fullname.split(' ').length);
+const isValidFullName = (fullname: string, returning: boolean = false): any => {
+    const pass = [2, 3, 4, 5].includes(fullname.split(' ').length);
+    if (returning) {
+        return fullname
+    }
+    return pass
+}
 
-const isValidEmailAddress = (email: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+const isValidEmailAddress = (email: string, returning: boolean = false): any => {
+    const pass = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    if (returning) {
+        return email
+    }
+    return pass
+}
 
-const isValidPasswordHard = (password: string): boolean => /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\!\@\#\$\%\^\&\*\(\)])[a-zA-Z\d.$]{8,32}/.test(password);
+const isValidPasswordNormal = (password: string, returning: boolean = false): any => {
+    const pass = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d.$]{8,32}/.test(password);
+    if (returning) {
+        return password
+    }
+    return pass
+}
 
-const isValidPasswordNormal = (password: string): boolean => /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d.$]{8,32}/.test(password);
-
-type ValidationTypes = 'singleName' | 'fullName' | 'email' | 'password' | 'confirmPassword';
+type ValidationTypes = 'singleName' | 'fullName' | 'name' | 'email' | 'password' | 'confirmPassword';
 
 const validationTypesFunc: Record<ValidationTypes, (value: string) => boolean> = {
     singleName: isValidSingleName,
     fullName: isValidFullName,
+    name: isValidFullName,
     email: isValidEmailAddress,
     password: isValidPasswordNormal,
     confirmPassword: isValidPasswordNormal,
@@ -21,9 +44,11 @@ const validationTypesFunc: Record<ValidationTypes, (value: string) => boolean> =
 interface CheckValidationParams {
     singleName?: string;
     fullName?: string;
+    name?: string;
     email?: string;
     password?: string;
     confirmPassword?: string;
+    [key: string]: string | undefined;
 }
 
 interface CheckValidationResult {
@@ -60,4 +85,4 @@ const generatePassword = (hard: boolean = true): string => {
     return password;
 };
 
-export { isValidSingleName, isValidFullName, isValidEmailAddress, isValidPasswordNormal, isValidPasswordHard, checkValidation, generatePassword };
+export { isValidSingleName, isValidFullName, isValidEmailAddress, isValidPasswordNormal, checkValidation, generatePassword };

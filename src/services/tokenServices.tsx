@@ -3,9 +3,18 @@ const setToken = (token: string): void => {
 };
 
 const getToken = (): string | null => {
-    return JSON.parse(localStorage.getItem('token') || 'null');
+    const token = localStorage.getItem('token')
+    if (isTokenStyleString(token)) {
+        return JSON.parse(token)
+    } else {
+        localStorage.removeItem('token')
+        return null
+    }
 };
 
-const removeToken = (): void => localStorage.removeItem('token');
+const isTokenStyleString = (token: any): boolean => {
+    return (token && typeof (token) === 'string' && token !== 'undefined' && token.length > 10 && (token.split('.')).length > 1) ? true : false
+}
 
-export { setToken, getToken, removeToken };
+
+export { setToken, getToken, isTokenStyleString };

@@ -1,10 +1,16 @@
 import { configureStore, ThunkAction, Action } from '@reduxjs/toolkit';
 import { userApi } from '../services/api';
-import signupSlice from '../components/pages/auth/signup/signupSlice';
+import settingSlice from '../components/pages/me/settings/settingSlice';
+import rootSlice from '../rootSlice';
+import toastSlice from '../toastSlice';
+import userSlice from '../components/pages/userSlice';
 
 export const store = configureStore({
     reducer: {
-        signup : signupSlice,
+        root: rootSlice,
+        toast: toastSlice,
+        user: userSlice,
+        setting: settingSlice,
         // apis
         [userApi.reducerPath]: userApi.reducer,
     },

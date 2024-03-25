@@ -1,60 +1,87 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAppSelector } from '../../../../app/hooks';
 import { useUserLoginMutation } from '../../../../services/api';
 import { checkValidation } from '../../../../services/validation-help';
 import { setToken } from '../../../../services/tokenServices';
-import { Alert } from '@material-tailwind/react';
+import SpinnerLoading from '../../../common/Spinner';
+import { useDispatch } from 'react-redux';
+import { setUserToken } from '../../../../rootSlice';
+import { reRenderToast, setToastContainerOptions, setToastContent } from '../../../../toastSlice';
+import { isBothObjectSame } from '../../../../services/commonFunctions';
 
 const Login: React.FC = () => {
     const navigate = useNavigate();
-    const signupEmail: null | string = useAppSelector((state) => state.signup.signupEmail);
+    const dispatch = useDispatch()
 
-    const [email, setEmail] = useState(signupEmail ? signupEmail : '');
-    const [password, setPassword] = useState('');
-    const [rememberMe, setRememberMe] = useState(false);
-    const [showPassword, setShowPassword] = useState(false);
-    const [error, setError] = useState<boolean | string>(false);
+    const [email, setEmail] = useState<string>('');
+    const [password, setPassword] = useState<string>('');
+    const [showPassword, setShowPassword] = useState<boolean>(false);
+    const [validationErrorMsg, setValidationErrorMsg] = useState<string | boolean>(false)
+    const [serverMsg, setServerMsg] = useState<string | boolean>(false)
+    const msgToShow = serverMsg ? serverMsg : validationErrorMsg
+    const [msgShowType, setMsgShowType] = useState<'error' | 'success' | 'info'>('error')
+    const [submitDisability, setSubmitDisability] = useState<boolean>(true)
+    const [prevSubmit, setPrevSubmit] = useState({})
 
-    const [login, { isLoading, isError }] = useUserLoginMutation();
-    const [serverResponseError, setServerResponseError] = useState(false);
+    const [login, { isLoading }] = useUserLoginMutation();
+
+    useEffect(() => {
+        dispatch(setToastContainerOptions({ type: msgShowType }))
+        dispatch(setToastContent(msgToShow))
+
+    }, [serverMsg, validationErrorMsg, msgToShow])
+
+    useEffect(() => {
+        setSubmitDisability(((email.length > 10 && password.length > 8) && !isLoading) ? false : true)
+    }, [email, password])
 
     const handleLogin = async (ev: React.SyntheticEvent) => {
-        ev.preventDefault();
-        const formData = new FormData(ev.target as HTMLFormElement | undefined);
-        const email = formData.get('email') as string;
-        const password = formData.get('password') as string;
-        const rememberMe: boolean = formData.get('rememberMe') === 'on';
-        const { errors } = checkValidation({
-            email: email,
-            password: password,
-        });
-
-        if (errors) {
-            setError('Invalid - ' + Object.keys(errors).join(', '));
-            return;
-        }
         try {
-            const response: any = await login({ email, password, rememberMe });
-            const { data, status, message } = response.data;
-            if (status.toLowerCase() === 'failed') {
-                setServerResponseError(message);
-                return;
-            }
-            setError(false);
-            setServerResponseError(false);
-            if (data.token) {
-                setToken(data.token);
-                navigate('/me/dashboard');
-            }
-        } catch (error) {
-            console.log('error', error);
-        }
-    };
 
-    if (isError) {
-        console.log('isError triggered');
+
+            ev.preventDefault();
+            setSubmitDisability(true)
+            const formData = new FormData(ev.target as HTMLFormElement | undefined);
+            const email = formData.get('email') as string;
+            const password = formData.get('password') as string;
+            const { errors: validationErrors } = checkValidation({
+                email: email,
+                password: password,
+            });
+            if (validationErrors) {
+                setValidationErrorMsg('could not find account, invalid credentials')
+                return
+            }
+            const toSubmit = { email, password }
+            if (isBothObjectSame(prevSubmit, toSubmit)) {
+                dispatch(reRenderToast())
+                return
+            } else {
+                setPrevSubmit(toSubmit)
+            }
+            const response: any = await login(toSubmit)
+            setPrevSubmit(toSubmit)
+            const { data, error } = response
+            console.log(data)
+            const token = data?.data?.token
+            if (!error && token) {
+                dispatch(setUserToken(token))
+                setToken(token)
+                setMsgShowType('success')
+                setServerMsg(data.message)
+                navigate('/me')
+            } else {
+                setServerMsg(data?.message || 'could not login, try again')
+            }
+
+        } catch (error) {
+            console.log(error)
+            setServerMsg('could not find account, invalid credentials')
+        } finally {
+            setSubmitDisability(false)
+        }
     }
+
 
     return (
         <div className='flex min-h-screen flex-1 flex-col justify-center px-6 py-6 lg:px-8'>
@@ -63,7 +90,11 @@ const Login: React.FC = () => {
             </div>
 
             <div className='mt-5 sm:mx-auto sm:w-full sm:max-w-sm'>
-                <form onSubmit={handleLogin} className='space-y-12' method='POST'>
+                <form
+                    onSubmit={(ev) => {
+                        setSubmitDisability(true)
+                        handleLogin(ev)
+                    }} className='space-y-12' method='POST'>
                     <div className='fields space-y-3'>
                         <div>
                             <label htmlFor='email' className='block text-sm font-medium leading-4 text-gray-900'>
@@ -73,6 +104,7 @@ const Login: React.FC = () => {
                                 <input
                                     onChange={(ev) => {
                                         setEmail(ev.target.value.trim());
+                                        setValidationErrorMsg(false)
                                     }}
                                     value={email}
                                     id='email'
@@ -94,6 +126,7 @@ const Login: React.FC = () => {
                                 <input
                                     onChange={(ev) => {
                                         setPassword(ev.target.value.trim());
+                                        setValidationErrorMsg(false)
                                     }}
                                     value={password}
                                     id='password'
@@ -112,19 +145,9 @@ const Login: React.FC = () => {
                                 ></i>
                             </div>
                         </div>
-                        <label htmlFor='rememberMe' className='select-none flex items-center justify-left ml-3 text-sm font-medium leading-6 text-gray-900'>
-                            Remember me (recommended for quick login)
-                            <input
-                                onChange={() => {
-                                    setRememberMe(!rememberMe);
-                                }}
-                                name='rememberMe'
-                                id='rememberMe'
-                                type='checkbox'
-                                className='accent-green-600 ml-3'
-                            />
-                        </label>
+
                         <p className='justify-self-start mt-10 text-center text-sm text-gray-500'>
+                            <a href="/helps/terms" className='text-indigo-500 underline px-4' target='_blank'>Show terms and services</a>
                             <a
                                 href='/'
                                 onClick={(ev) => {
@@ -137,17 +160,12 @@ const Login: React.FC = () => {
                             </a>
                         </p>
                     </div>
-                    <div className='font-bold h-[50px] flex flex-1 items-center justify-center'>{(serverResponseError || error) && <Alert className='text-red-500'>{serverResponseError || error}</Alert>}</div>
 
                     <div className='relative'>
-                        <button type='submit' className='fabsolute right-5 top-1.5 lex w-full justify-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600'>
+                        <button disabled={isLoading || submitDisability} type='submit' className={'fabsolute right-5 top-1.5 lex w-full justify-center rounded-m px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ' + (!submitDisability ? 'bg-indigo-600 hover:bg-indigo-500 focus-visible:outline-indigo-500' : 'bg-indigo-500 cursor-not-allowed')}>
                             Login
+                            {isLoading && <SpinnerLoading classnames='absolute right-1 top-1' size='1.7rem' />}
                         </button>
-                        {isLoading && (
-                            <div className='absolute right-5 top-1.5 text-white inline-block h-6 w-6 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]' role='status'>
-                                <span className='!absolute !-m-px !h-px !w-px !overflow-hidden !whitespace-nowrap !border-0 !p-0 ![clip:rect(0,0,0,0)]'>Loading...</span>
-                            </div>
-                        )}
                     </div>
                 </form>
                 <p className='mt-10 text-center text-sm text-gray-500 absolute bottom-5'>

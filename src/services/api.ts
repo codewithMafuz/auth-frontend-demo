@@ -1,25 +1,42 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
-import { UserRegistration, UserLogin } from '../models/user.model';
+import { UserRegistrationTypes, UserLoginTypes, UserUpdateMultipleDataTypes, UserChangePasswordTypes } from '../models/user.model';
+import { getToken } from './tokenServices';
 
 export const userApi = createApi({
     reducerPath: 'usersApi',
-    baseQuery: fetchBaseQuery({ baseUrl: process.env.REACT_APP_BASE_API }),
+    baseQuery: fetchBaseQuery({
+        baseUrl: process.env.REACT_APP_BASE_API,
+        prepareHeaders: (headers, { getState }) => {
+            const token = getState()['root']['token'] || getToken()
+            console.log(token)
+            if (token) {
+                headers.set('Authorization', 'Bearer ' + token)
+            }
+        },
+    }),
+
     endpoints: (builder) => ({
-        userRegistration: builder.mutation<any, UserRegistration>({
+        userRegistration: builder.mutation<any, UserRegistrationTypes>({
             query: (userRegistrationProps) => ({
                 url: '/registration',
                 method: 'POST',
                 body: userRegistrationProps,
             }),
         }),
-        userLogin: builder.mutation<any, UserLogin>({
+        userSignupComplete: builder.query({
+            query: ({ id, token }) => ({
+                url: `/complete-signup/${id}/${token}`,
+                method: 'GET',
+            })
+        }),
+        userLogin: builder.mutation<any, UserLoginTypes>({
             query: (userLoginProps) => ({
                 url: '/login',
                 method: 'POST',
                 body: userLoginProps,
             }),
         }),
-        userForgotPassword: builder.mutation<any, any>({
+        userForgotPassword: builder.mutation({
             query: (userForgotPasswordProps) => ({
                 url: '/send-reset-password-email',
                 method: 'POST',
@@ -34,7 +51,7 @@ export const userApi = createApi({
             }),
         }),
         userLoggedIn: builder.query({
-            query: (token) => ({
+            query: (token = getToken()) => ({
                 url: `/loggedin`,
                 method: 'GET',
                 headers: {
@@ -42,7 +59,23 @@ export const userApi = createApi({
                 },
             }),
         }),
+        userUpdateData: builder.mutation<UserUpdateMultipleDataTypes, any>({
+            query: (userNewDatas) => ({
+                url: '/update-data',
+                method: 'POST',
+                body: userNewDatas,
+            }),
+        }),
+        userUpdatePassword: builder.mutation<UserChangePasswordTypes, any>({
+            query: (data) => ({
+                url: '/update-password',
+                method: 'POST',
+                body: data,
+            }),
+        }),
     }),
 });
 
-export const { useUserRegistrationMutation, useUserLoginMutation, useUserForgotPasswordMutation, useUserResetPasswordMutation, useUserLoggedInQuery } = userApi;
+export const { useUserRegistrationMutation, useUserLoginMutation, useUserForgotPasswordMutation, useUserResetPasswordMutation, useUserLoggedInQuery, useLazyUserLoggedInQuery, useUserSignupCompleteQuery, useUserUpdateDataMutation, useUserUpdatePasswordMutation } = userApi;
+
+

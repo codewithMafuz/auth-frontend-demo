@@ -1,66 +1,96 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { checkValidation } from '../../../../services/validation-help';
 import { useUserRegistrationMutation } from '../../../../services/api';
-import { setToken } from '../../../../services/tokenServices';
-import { useAppDispatch } from '../../../../app/hooks';
-import { setSignupEmail } from './signupSlice';
-import { Alert } from '@material-tailwind/react';
+import TimerComponent from '../../../common/TimerComponent';
+import { useDispatch } from 'react-redux';
+import { reRenderToast, setToastContainerOptions, setToastContent } from '../../../../toastSlice';
 
 const Signup: React.FC = () => {
-    const dispatch = useAppDispatch();
     const navigate = useNavigate();
+    const dispatch = useDispatch()
 
-    const [name, setName] = useState('');
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [recieveEmails, setRecieveEmails] = useState(false);
-    const [showPassword, setShowPassword] = useState(false);
-    const [error, setError] = useState<string | boolean>(false);
+    const [name, setName] = useState<string>('');
+    const [email, setEmail] = useState<string>('');
+    const [password, setPassword] = useState<string>('');
+    const [agreeTerms, setAgreeTerms] = useState<boolean>(false)
+    const [showPassword, setShowPassword] = useState<boolean>(false);
+    const [validationErrorMsg, setValidationErrorMsg] = useState<string | boolean>(false)
+    const [serverMsg, setServerMsg] = useState<string | boolean>(false)
+    const msgToShow = serverMsg ? serverMsg : validationErrorMsg
+    const [msgShowType, setMsgShowType] = useState<'error' | 'success' | 'info'>('error')
+    const [submitDisability, setSubmitDisability] = useState<boolean>(true)
+    const [sentConfirmationEmail, setSentConfirmationEmail] = useState<any>(false)
+    const [prevRegisterableData, setPrevRegisterableData] = useState({})
 
-    const [register, { isLoading, isError }] = useUserRegistrationMutation();
-    const [serverResponseError, setServerResponseError] = useState(false);
+    const [register, { isLoading }] = useUserRegistrationMutation();
+
+
+    useEffect(() => {
+        dispatch(setToastContent(msgToShow))
+        dispatch(setToastContainerOptions({ type: msgShowType }))
+    }, [msgToShow])
+
+    useEffect(() => {
+        setPrevRegisterableData({})
+        setSubmitDisability(((email.length > 1 && password.length > 8 && name.length > 1) && !isLoading) ? false : true)
+    }, [name, email, password])
 
     const handleSignup = async (ev: React.SyntheticEvent) => {
-        ev.preventDefault();
-        const formData = new FormData(ev.target as HTMLFormElement | undefined);
-        const name = formData.get('name') as string;
-        const email = formData.get('email') as string;
-        const password = formData.get('password') as string;
-        const recieveEmails: boolean = formData.get('recieveEmails') === 'on';
-        const { errors } = checkValidation({
-            fullName: name,
-            email: email,
-            password: password,
-        });
-
-        if (errors) {
-            setError('Invalid - ' + Object.keys(errors).join(', '));
-            dispatch(setSignupEmail(null));
-            return;
-        }
         try {
-            const response: any = await register({ name, email, password, recieveEmails });
-            const { data, status, message } = response.data;
-            if (status.toLowerCase() === 'failed') {
-                setServerResponseError(message);
-                dispatch(setSignupEmail(null));
-                return;
+
+
+            ev.preventDefault();
+            setSubmitDisability(true)
+            const formData = new FormData(ev.target as HTMLFormElement | undefined);
+            const email = formData.get('email') as string;
+            const password = formData.get('password') as string;
+            const agreeTerms: boolean = formData.get('agreeTerms') === 'on';
+            const registerableData = {
+                name,
+                email,
+                password,
+                agreeTerms
             }
-            setError(false);
-            setServerResponseError(false);
-            if (data.token) {
-                setToken(data.token);
-                dispatch(setSignupEmail(email));
-                navigate('/auth/login');
+            const { errors: validationErrors } = checkValidation({
+                fullName: name,
+                email: email,
+                password: password,
+            });
+            if (validationErrors) {
+                setValidationErrorMsg('invalid ' + Object.keys(validationErrors).join(', '))
+                return
+            }
+            try {
+                if (Object.values(registerableData).join('') === Object.values(prevRegisterableData).join('')) {
+                    return
+                }
+                setPrevRegisterableData(registerableData)
+                const response: any = await register(registerableData)
+                console.log(response)
+                const { data, error } = response
+                console.log(data)
+                if (!error && data?.status === 'OK') {
+                    setMsgShowType('success')
+                    setServerMsg(data.message)
+                    console.log('---', data.data.confLinkExpInMs)
+                    setSentConfirmationEmail(Math.round((data.data.confLinkExpInMs) / 1000))
+                } else {
+                    setServerMsg(data?.message || 'could not signup, try again')
+                }
+            } catch (error) {
+                console.log(error)
+                setServerMsg('something went wrong, try again')
+            } finally {
+                setSubmitDisability(false)
             }
         } catch (error) {
-            console.log('error', error);
+            console.log(error)
+            setServerMsg('something went wrong, try again')
+        } finally {
+            dispatch(reRenderToast())
+            setSubmitDisability(false)
         }
-    };
-
-    if (isError) {
-        console.log('isError triggered');
     }
 
     return (
@@ -70,7 +100,10 @@ const Signup: React.FC = () => {
             </div>
 
             <div className='mt-5 sm:mx-auto sm:w-full sm:max-w-sm'>
-                <form onSubmit={handleSignup} className='space-y-12' method='POST'>
+                <form onSubmit={(ev) => {
+                    setSubmitDisability(true)
+                    handleSignup(ev)
+                }} className='space-y-12' method='POST'>
                     <div className='fields space-y-3'>
                         <div>
                             <label htmlFor='name' className='block text-sm font-medium leading-6 text-gray-900'>
@@ -99,6 +132,7 @@ const Signup: React.FC = () => {
                                 <input
                                     onChange={(ev) => {
                                         setEmail(ev.target.value.trim());
+                                        setValidationErrorMsg(false)
                                     }}
                                     value={email}
                                     id='email'
@@ -120,6 +154,7 @@ const Signup: React.FC = () => {
                                 <input
                                     onChange={(ev) => {
                                         setPassword(ev.target.value.trim());
+                                        setValidationErrorMsg(false)
                                     }}
                                     value={password}
                                     id='password'
@@ -132,29 +167,37 @@ const Signup: React.FC = () => {
                                 <i
                                     onClick={() => {
                                         setShowPassword(!showPassword);
+                                        setValidationErrorMsg(false)
                                     }}
                                     title={(showPassword ? 'hide' : 'show') + ' password'}
                                     className={'cursor-pointer absolute top-2 right-2 text-blue-500 fa-solid fa-eye' + (showPassword ? '-slash' : '')}
                                 ></i>
                             </div>
                         </div>
-                        <label htmlFor='recieveEmails' className='select-none flex items-center justify-left ml-3 text-sm font-medium leading-6 text-gray-900'>
+                        <label htmlFor='agreeTerms' className='select-none flex items-center justify-left ml-3 text-sm font-medium leading-6 text-gray-900'>
                             Allow events, hightlight emails
                             <input
                                 onChange={() => {
-                                    setRecieveEmails(!recieveEmails);
+                                    setAgreeTerms(!agreeTerms);
                                 }}
-                                name='recieveEmails'
-                                id='recieveEmails'
+                                name='agreeTerms'
+                                id='agreeTerms'
                                 type='checkbox'
                                 className='accent-green-600 ml-3'
                             />
                         </label>
                     </div>
-                    <div className='font-bold h-[50px] flex flex-1 items-center justify-center'>{(error || serverResponseError) && <Alert className='text-red-500'>{error || serverResponseError}</Alert>}</div>
+                    <div className='font-bold h-[50px] flex flex-col flex-1 items-center justify-center'>
+                        {sentConfirmationEmail &&
+                            <TimerComponent
+                                onEndTime={() => {
+                                    setPrevRegisterableData({})
+                                }} start={sentConfirmationEmail} prefix='Click on the confirmation link within ' />
+                        }
+                    </div>
 
                     <div className='relative'>
-                        <button type='submit' className='absolute flex w-full justify-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600'>
+                        <button disabled={isLoading || submitDisability} type='submit' className={'fabsolute right-5 top-1.5 lex w-full justify-center rounded-m px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ' + (!submitDisability ? 'bg-indigo-600 hover:bg-indigo-500 focus-visible:outline-indigo-500' : 'bg-indigo-500 cursor-not-allowed')}>
                             Signup
                         </button>
                         {isLoading && (

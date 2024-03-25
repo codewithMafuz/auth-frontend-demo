@@ -1,16 +1,32 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useUserForgotPasswordMutation } from '../../../../services/api';
 import { checkValidation } from '../../../../services/validation-help';
-import { Alert } from '@material-tailwind/react';
 import { useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
+import { reRenderToast, setToastContainerOptions, setToastContent } from '../../../../toastSlice';
 
 const ForgetPassword: React.FC = () => {
     const navigate = useNavigate();
+    const dispatch = useDispatch()
     const [email, setEmail] = useState('');
     const [error, setError] = useState<any>();
+    const [msgShowType, setMsgShowType] = useState("error")
 
     const [forgotpassword, { isLoading, isError }] = useUserForgotPasswordMutation();
     const [serverResponseError, setServerResponseError] = useState(false);
+    const [prevEmail, setPrevEmail] = useState<string>('')
+
+    useEffect(() => {
+        dispatch(setToastContent(serverResponseError || error))
+        dispatch(setToastContainerOptions({ type: msgShowType }))
+    }, [serverResponseError, error])
+
+
+    useEffect(() => {
+        if (email.trim().length > 10) {
+            setPrevEmail('')
+        }
+    }, [email])
 
     const handleForgetPasswordEmail = async (ev: React.SyntheticEvent) => {
         ev.preventDefault();
@@ -25,16 +41,22 @@ const ForgetPassword: React.FC = () => {
             return;
         }
         try {
-            const response: any = await forgotpassword({ email });
-            const { status, message } = response.data;
-            if (status.toLowerCase() === 'failed') {
-                setServerResponseError(message);
-                return;
+            if (email !== prevEmail) {
+                setPrevEmail(email)
+                const response: any = await forgotpassword({ email });
+                const { status, message } = response.data;
+                if (status === 'Failed') {
+                    setServerResponseError(message);
+                    return;
+                }
+                setMsgShowType('success')
+                setError('check your email, we have sent an reset password link to your email');
+                setServerResponseError(false);
             }
-            setError('check your email, we have sent an reset password link to your email');
-            setServerResponseError(false);
         } catch (error) {
             console.log('status', error);
+        } finally {
+            dispatch(reRenderToast())
         }
     };
 
@@ -45,8 +67,8 @@ const ForgetPassword: React.FC = () => {
     return (
         <div className='flex min-h-screen flex-1 flex-col justify-center px-6 py-6 lg:px-8'>
             <div className='sm:mx-auto sm:w-full sm:max-w-sm'>
-                <img className='mx-auto h-10 w-auto' src='https://tailwindui.com/img/logos/mark.svg?color=indigo&shade=600' alt='Your Company' />
-                <h2 className='mt-5 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900'>Login</h2>
+
+                <h2 className='mt-5 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900'>Forget Password</h2>
             </div>
 
             <div className='mt-5 sm:mx-auto sm:w-full sm:max-w-sm'>
@@ -54,7 +76,9 @@ const ForgetPassword: React.FC = () => {
                     <div className='fields space-y-3'>
                         <div>
                             <label htmlFor='email' className='block text-sm font-medium leading-4 text-gray-900'>
-                                Email address
+                                Your Email address
+                                <br />
+                                (we will sent a link to recover your account)
                             </label>
                             <div className='mt-2'>
                                 <input
@@ -73,11 +97,6 @@ const ForgetPassword: React.FC = () => {
                         </div>
                     </div>
                     <div className='font-bold h-[50px] flex flex-1 items-center justify-center'>
-                        {(serverResponseError || error) && (
-                            <Alert className='text-red-500'>
-                                {serverResponseError || error}
-                            </Alert>
-                        )}
                     </div>
                     <div className='flex justify-between'>
                         <a
@@ -102,7 +121,7 @@ const ForgetPassword: React.FC = () => {
                         </a>
                     </div>
                     <div className='relative'>
-                        <button type='submit' className='fabsolute right-5 top-1.5 lex w-full justify-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600'>
+                        <button disabled={prevEmail === email} type='submit' className='fabsolute right-5 top-1.5 lex w-full justify-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600'>
                             Send Reset Password link
                         </button>
                         {isLoading && (

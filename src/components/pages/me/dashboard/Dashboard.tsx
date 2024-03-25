@@ -1,22 +1,19 @@
-import React, { useEffect } from 'react';
-import { useUserLoggedInQuery } from '../../../../services/api';
-import { getToken } from '../../../../services/tokenServices';
-import { useNavigate } from 'react-router-dom';
 
 const Dashboard = () => {
-    const navigate = useNavigate();
-    const token = getToken();
-    const { data, isSuccess, isError, isLoading } = useUserLoggedInQuery(token);
 
-    if (isSuccess || isError) {
-        console.log(isSuccess || isError);
-    }
 
-    useEffect(() => {
-        console.log('isloading');
-    }, [isLoading]);
 
-    return <>{JSON.stringify(data)}</>;
+
+
+    return (
+
+        <main className="flex-1 p-4 min-h-[100vh] flex justify-center items-center">
+            <h1 className='text-center font-bold text-xl md:text-[1.4rem] lg:text-[3rem]'>Dashboard is currently set empty</h1>
+        </main>
+    );
 };
+
+
+
 
 export default Dashboard;

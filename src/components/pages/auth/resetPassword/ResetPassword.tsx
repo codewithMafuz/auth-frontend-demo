@@ -4,7 +4,7 @@ import { checkValidation } from '../../../../services/validation-help';
 import { useNavigate, useParams } from 'react-router-dom';
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import { isBothObjectSame } from '../../../../services/commonFunctions';
-import { reRenderToast, setToastContainerOptions, setToastContent } from '../../../../toastSlice';
+import { setToastContainerOptions, setToastContent } from '../../../../toastSlice';
 import { useDispatch } from 'react-redux';
 
 
@@ -19,23 +19,29 @@ const ResetPassword: React.FC = () => {
     const [confirmPassword, setConfirmPassword] = useState<any>('');
     const [prevSubmit, setPrevSubmit] = useState({})
     const [validationError, setValidationError] = useState('')
-    const [serverMsg, serServerMsg] = useState('')
-    const [msgToShow, setMsgToShow] = useState('')
+    const [serverMsg, setServerMsg] = useState('')
+    const msgToShow = serverMsg || validationError
     const [msgShowType, setMsgShowType] = useState('error')
+    const msg = { content: msgToShow, msgType: msgShowType, msgRenderedTime: 0 }
 
-    const [resetPassword, { isLoading, isError }] = useUserResetPasswordMutation();
-    const [showSubmitBtn, setShowSubmitBtn] = useState(false)
+
+    const [resetPassword, { isLoading }] = useUserResetPasswordMutation();
+    const [showSubmitBtn, setShowSubmitBtn] = useState(true)
+
+    // console.log(showSubmitBtn)
 
     useEffect(() => {
-        dispatch(setToastContent(msgToShow))
-        dispatch(setToastContainerOptions({ type: msgShowType }))
-    }, [msgToShow])
-
+        if (msg.content) {
+            // console.log('msg to show useeffect working')
+            dispatch(setToastContent(msg.content))
+            dispatch(setToastContainerOptions({ type: msg.msgType }))
+        }
+        setShowSubmitBtn(true)
+    }, [JSON.stringify(msg)])
 
     useEffect(() => {
         if (password.length > 8 && confirmPassword.length > 8) {
             setPrevSubmit({})
-            setShowSubmitBtn(true)
         } else {
             setShowPassword(false)
         }
@@ -43,8 +49,11 @@ const ResetPassword: React.FC = () => {
 
 
     const handleForgetPasswordEmail = async (ev: React.SyntheticEvent) => {
-        setShowSubmitBtn(false)
         ev.preventDefault();
+        if (!showSubmitBtn) {
+            return
+        }
+        setServerMsg('')
         const formData = new FormData(ev.target as HTMLFormElement | undefined);
         const password = formData.get('password') as string;
         const confirmPassword = formData.get('confirmPassword') as string;
@@ -56,46 +65,42 @@ const ResetPassword: React.FC = () => {
 
         if (errors) {
             setMsgShowType('error')
-            setValidationError('Invalid - ' + Object.keys(errors).join(', '));
+            setValidationError('Invalid password or confirm password');
             return;
         }
         try {
             if (password.trim() !== confirmPassword.trim()) {
                 setMsgShowType('error')
-                setMsgToShow('password and confirm password does not match')
+                setServerMsg('password and confirm password does not match')
                 return;
             }
             const userNewPasswordProps = {
                 password: password.trim(),
                 confirmPassword: confirmPassword.trim(),
             };
-            console.log('--', isBothObjectSame(userNewPasswordProps, prevSubmit))
+            // console.log('--', isBothObjectSame(userNewPasswordProps, prevSubmit))
             if (!isBothObjectSame(userNewPasswordProps, prevSubmit)) {
-                setShowSubmitBtn(true)
-                console.log('--', isBothObjectSame(userNewPasswordProps, prevSubmit))
+                // console.log('--', isBothObjectSame(userNewPasswordProps, prevSubmit))
                 setPrevSubmit(userNewPasswordProps)
-                const response: any = await resetPassword({ userNewPasswordProps, id, token });
+                const response: any = await resetPassword({ userNewPasswordProps, id, token: token.split('&')[0] });
+                // console.log(response)
                 const { status, message } = response.data;
+                // console.log(status, message)
                 if (status === 'Failed') {
-                    serServerMsg(message);
+                    setMsgShowType('error')
+                    setServerMsg(message);
                     return;
+                } else {
+                    setMsgShowType('success')
+                    setServerMsg('password reset done, back to login');
                 }
-                setMsgShowType('success')
-                serServerMsg('password reset done, back to login');
 
-            }
+            } 
         } catch (error) {
-            console.log('status', error);
-        } finally {
-            dispatch(reRenderToast())
-            setShowSubmitBtn(true)
+            // console.log('status', error);
         }
     };
 
-    if (isError) {
-        setMsgShowType('error')
-        setMsgToShow('failed, something went wrong')
-    }
 
     return (
         <div className='flex min-h-screen flex-1 flex-col justify-center px-6 py-6 lg:px-8'>
@@ -163,7 +168,8 @@ const ResetPassword: React.FC = () => {
                     </div>
                     <div className='font-bold h-[50px] flex flex-1 items-center justify-center'>
                     </div>
-                    <div className='flex justify-center'>
+                    <div className='flex justify-center items-center flex-col'>
+                        <p>Password must includes lowercase, uppercase characters and digit</p>
                         <a
                             href='/'
                             onClick={(ev) => {
@@ -177,7 +183,7 @@ const ResetPassword: React.FC = () => {
                     </div>
                     <div className='relative'>
                         {!isLoading &&
-                            <button type='submit' className='fabsolute right-5 top-1.5 lex w-full justify-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600'>
+                            <button type='submit' className='absolute right-5 top-1.5 lex w-full justify-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600'>
                                 Set Password
                             </button>}
                         {isLoading && (

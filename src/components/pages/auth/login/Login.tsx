@@ -6,8 +6,11 @@ import { setToken } from '../../../../services/tokenServices';
 import SpinnerLoading from '../../../common/Spinner';
 import { useDispatch } from 'react-redux';
 import { setUserToken } from '../../../../rootSlice';
-import { reRenderToast, setToastContainerOptions, setToastContent } from '../../../../toastSlice';
+import { setToastContainerOptions, setToastContent } from '../../../../toastSlice';
 import { isBothObjectSame } from '../../../../services/commonFunctions';
+import { FiEye, FiEyeOff } from 'react-icons/fi';
+import CheckLoggedIn from '../../../../services/CheckLoggedIn';
+import { setUserInfo } from '../../userSlice';
 
 const Login: React.FC = () => {
     const navigate = useNavigate();
@@ -20,18 +23,23 @@ const Login: React.FC = () => {
     const [serverMsg, setServerMsg] = useState<string | boolean>(false)
     const msgToShow = serverMsg ? serverMsg : validationErrorMsg
     const [msgShowType, setMsgShowType] = useState<'error' | 'success' | 'info'>('error')
+    const msg = { content: msgToShow, msgType: msgShowType, msgRenderedTime: 0 }
+
     const [submitDisability, setSubmitDisability] = useState<boolean>(true)
     const [prevSubmit, setPrevSubmit] = useState({})
 
     const [login, { isLoading }] = useUserLoginMutation();
 
     useEffect(() => {
-        dispatch(setToastContainerOptions({ type: msgShowType }))
-        dispatch(setToastContent(msgToShow))
+        if (msg.content) {
+            dispatch(setToastContainerOptions({ type: msg.msgType }))
+            dispatch(setToastContent(msg.content))
+        }
 
-    }, [serverMsg, validationErrorMsg, msgToShow])
+    }, [JSON.stringify(msg)])
 
     useEffect(() => {
+        setPrevSubmit({})
         setSubmitDisability(((email.length > 10 && password.length > 8) && !isLoading) ? false : true)
     }, [email, password])
 
@@ -51,10 +59,11 @@ const Login: React.FC = () => {
             if (validationErrors) {
                 setValidationErrorMsg('could not find account, invalid credentials')
                 return
+                // login page still have some problem, like not submitting like that, not showing alert too
             }
             const toSubmit = { email, password }
             if (isBothObjectSame(prevSubmit, toSubmit)) {
-                dispatch(reRenderToast())
+                setSubmitDisability(true)
                 return
             } else {
                 setPrevSubmit(toSubmit)
@@ -62,7 +71,7 @@ const Login: React.FC = () => {
             const response: any = await login(toSubmit)
             setPrevSubmit(toSubmit)
             const { data, error } = response
-            console.log(data)
+            // console.log(data)
             const token = data?.data?.token
             if (!error && token) {
                 dispatch(setUserToken(token))
@@ -75,7 +84,7 @@ const Login: React.FC = () => {
             }
 
         } catch (error) {
-            console.log(error)
+            // console.log(error)
             setServerMsg('could not find account, invalid credentials')
         } finally {
             setSubmitDisability(false)
@@ -85,6 +94,11 @@ const Login: React.FC = () => {
 
     return (
         <div className='flex min-h-screen flex-1 flex-col justify-center px-6 py-6 lg:px-8'>
+            <CheckLoggedIn actionOnIfLoggedIn={(user) => {
+                const { name, email, _id, profilePath } = user
+                dispatch(setUserInfo({ name, email, _id, profilePath }))
+                navigate('/me')
+            }} />
             <div className='sm:mx-auto sm:w-full sm:max-w-sm'>
                 <h2 className='mt-5 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900'>Login</h2>
             </div>
@@ -136,13 +150,24 @@ const Login: React.FC = () => {
                                     required
                                     className='focus:outline-[1px] focus:outline-gray-200 pl-1.5 block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6'
                                 />
-                                <i
-                                    onClick={() => {
-                                        setShowPassword(!showPassword);
-                                    }}
-                                    title={(showPassword ? 'hide' : 'show') + ' password'}
-                                    className={'cursor-pointer absolute top-2 right-2 text-blue-500 fa-solid fa-eye' + (showPassword ? '-slash' : '')}
-                                ></i>
+
+                                {showPassword ?
+                                    <FiEye
+                                        onClick={() => {
+                                            setShowPassword(!showPassword);
+                                        }}
+                                        title={(showPassword ? 'hide' : 'show') + ' password'}
+                                        className='cursor-pointer absolute top-2 right-2 text-blue-500'
+                                    /> :
+                                    <FiEyeOff
+                                        onClick={() => {
+                                            setShowPassword(!showPassword);
+                                        }}
+                                        title={(showPassword ? 'hide' : 'show') + ' password'}
+                                        className='cursor-pointer absolute top-2 right-2 text-blue-500'
+                                    />}
+
+
                             </div>
                         </div>
 

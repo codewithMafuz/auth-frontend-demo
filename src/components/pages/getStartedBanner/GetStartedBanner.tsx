@@ -1,36 +1,25 @@
-import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useUserLoggedInQuery } from '../../../services/api';
 import Typewriter from 'typewriter-effect';
 import './GetStarted.css'
-import { useSelector } from 'react-redux';
+import CheckLoggedIn from '../../../services/CheckLoggedIn';
+import { useDispatch } from 'react-redux';
+import { setUserInfo } from '../userSlice';
 
 const GetStartedBanner: React.FC = () => {
     const navigate = useNavigate();
-    const token = useSelector((state: any) => state.root.token)
-
-    const { data, isLoading, isSuccess } = useUserLoggedInQuery(token);
-    console.log(data)
-
-    const [loggedIn, setLoggedIn] = useState<any>(false)
-
-    useEffect(() => {
-        setLoggedIn(token && data?.status === 'OK')
-
-    }, [token, isSuccess])
-
-    useEffect(() => {
-        if (loggedIn) {
-            navigate("/me")
-        }
-    }, [loggedIn])
+    const dispatch = useDispatch()
 
     const handleClickOnGetStarted = (ev) => {
-        navigate(loggedIn ? '/me' : '/auth/signup')
+        navigate('/auth/signup')
     }
 
     return (
         <>
+            <CheckLoggedIn actionOnIfLoggedIn={(user) => {
+                const { name, email, _id, profilePath } = user
+                dispatch(setUserInfo({ name, email, _id, profilePath }))
+                navigate('/me')
+            }} />
             <div className="area">
                 <ul className="circles">
                     <li className='text-center flex items-center justify-center text-white'>Showcase</li>
@@ -56,7 +45,7 @@ const GetStartedBanner: React.FC = () => {
                         <h1>Get Started </h1>
                         <h1 className='animate-typing overflow-hidden whitespace-nowrap border-r-4 border-r-white pr-5 text-white'>with MeInfoer</h1>
                     </div>
-                    <p className='text-lg text-white'>
+                    <div className='text-lg text-white'>
                         <Typewriter
                             options={{
                                 strings: 'Showcase Your Skills and Portfolio@with MeInfoer@and Improve yourself'.split('@'),
@@ -64,9 +53,8 @@ const GetStartedBanner: React.FC = () => {
                                 loop: true,
                             }}
                         />
-                    </p>
+                    </div>
                     <button
-                        disabled={isLoading}
                         onClick={handleClickOnGetStarted}
                         className='text-lg text-light-100 bg-blue-600 contained mt-4 transition-all text-gray-200 px-4 py-2 rounded-full hover:bg-blue-800 hover:text-gray-100'
                     >

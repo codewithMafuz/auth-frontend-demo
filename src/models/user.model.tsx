@@ -6,6 +6,7 @@ interface UserInputTypes {
     headline: string;
     agreeTerms: boolean;
     isEmailVerified: boolean;
+    profilePath: string | null;
     sentEmailLinkExpire: string;
     __v: number;
 }
@@ -13,10 +14,6 @@ interface UserInputTypes {
 export type UserRegistrationTypes = Pick<UserInputTypes, 'name' | 'agreeTerms' | 'email' | 'password'>;
 
 export type UserLoginTypes = Pick<UserInputTypes, 'email' | 'password'>;
-
-export type UserUpdateMultipleDataTypes = Omit<UserInputTypes, '_id' | '__v' | 'sentEmailLinkExpire' | 'agreeTerms'> & {
-    [P in keyof (Omit<UserInputTypes, '_id' | '__v' | 'sentEmailLinkExpire' | 'agreeTerms'>)]?: (Omit<UserInputTypes, '_id' | '__v' | 'sentEmailLinkExpire' | 'agreeTerms'>)[P];
-};
 
 export type UserChangePasswordTypes = Pick<UserInputTypes, 'password'> & {
     newPassword: string;

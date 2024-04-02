@@ -5,6 +5,7 @@ export const toastSlice = createSlice({
     name: 'toast',
 
     initialState: {
+        lastRenderedContent: "",
         lastRenderedMs: 0,
         content: '',
         toastContainerOptions: {
@@ -22,9 +23,14 @@ export const toastSlice = createSlice({
     },
     reducers: {
         setToastContent: (state, action) => {
-            console.log('setting up new content', action.payload)
-            state.lastRenderedMs = Date.now();
-            state.content = action.payload;
+            const newContent = action.payload || ""
+            const doesContentsDiffer = state.lastRenderedContent.trim() !== newContent.trim()
+            const isTimePassedFiveSec = Date.now() > (state.lastRenderedMs + 5000)
+            if (typeof newContent === "string" && (doesContentsDiffer || isTimePassedFiveSec)) {
+                state.lastRenderedMs = Date.now();
+                state.content = newContent;
+                state.lastRenderedContent = newContent
+            }
         },
         setToastContainerOptions: (state, action) => {
             state.toastContainerOptions = { ...state.toastContainerOptions, ...action.payload };

@@ -35,13 +35,13 @@ const TimerComponent = ({
             onSecondChange(newSecond)
         }, 1000);
 
-        return () => clearInterval(intervalRef.current); // Clear interval on unmount
-    }, []);
+        return () => clearInterval(intervalRef.current);
+    }, [seconds]);
 
     useEffect(() => {
-        if (seconds === 0) {
+        if (seconds <= 0) {
             setSeconds(false)
-            clearInterval(intervalRef.current); // Clear interval when countdown reaches 0
+            clearInterval(intervalRef.current);
             onEndTime();
         }
     }, [seconds]);

@@ -1,9 +1,10 @@
 import { createSlice } from '@reduxjs/toolkit';
+import { getToken } from './services/tokenServices';
 
 export const rootSlice = createSlice({
     name: 'root',
     initialState: {
-        token: null,
+        token: getToken(),
     },
     reducers: {
         setUserToken: (state, action) => {

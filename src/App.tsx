@@ -17,7 +17,7 @@ import Settings from './components/pages/me/settings/Settings';
 import SignupComplete from './components/pages/auth/signupComplet/SignupComplete';
 import Sidebar from './components/pages/me/Sidebar';
 import "react-toastify/dist/ReactToastify.min.css";
-import { setLastRenderedToast } from './toastSlice';
+import PageNotFound from './components/PageNotFound';
 
 
 export default function App() {
@@ -33,7 +33,6 @@ export default function App() {
     const { lastRenderedMs, content, toastContainerOptions } = useSelector((state: any) => state.toast);
     useEffect(() => {
         if (content) {
-            console.log(content)
             toast(content.trim(), {
                 type: toastContainerOptions.type
             });
@@ -57,6 +56,8 @@ export default function App() {
                     <Route path="settings" element={<Settings />} />
                 </Route>
                 <Route path='/helps/terms' element={<Terms />} />
+
+                <Route path="*" element={<PageNotFound />} />
             </Routes>
         </Router>
     );

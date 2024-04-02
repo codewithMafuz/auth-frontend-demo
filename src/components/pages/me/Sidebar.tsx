@@ -2,13 +2,10 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { MdDashboard, MdSettings, MdLogout, MdMenu, MdKeyboardDoubleArrowUp, MdCancel, MdEmojiPeople } from "react-icons/md";
 import { useEffect, useState, Fragment, useRef } from "react";
 import SpinnerLoading from "../../common/Spinner";
-import { useUserLoggedInQuery } from "../../../services/api";
 import { useSwipeable } from 'react-swipeable';
 import { useDispatch, useSelector } from "react-redux";
 
 import DialogueConfirm from "../../common/Dialogue";
-import { setUserInfo } from "../userSlice";
-import { getToken } from "../../../services/tokenServices";
 import { setUserToken } from "../../../rootSlice";
 
 export default function Sidebar() {
@@ -16,10 +13,7 @@ export default function Sidebar() {
     const dispatch = useDispatch()
     const location = useLocation()
 
-    const token = useSelector((state: any) => state.root.token) || getToken()
-
-
-    console.log("token from sidebar : ", token)
+    const token = useSelector((state: any) => state.root.token)
     const asideRef = useRef()
     const smScreenSidebarPos = -60
     const [sidebarWidthPx, setSidebarWidthPx] = useState<number>(240)
@@ -28,10 +22,9 @@ export default function Sidebar() {
 
     const pathname = location.pathname
     const [top, setTop] = useState(window.innerWidth >= 1024 ? 0 : smScreenSidebarPos)
-    const { data, isLoading, error } = useUserLoggedInQuery(token);
-    console.log('data from sidebar : ', data)
-    if (error) {
-        localStorage.removeItem('token')
+
+    // console.log('token --- ', token)
+    if (!token) {
         navigate('/auth/login')
     }
 
@@ -80,17 +73,11 @@ export default function Sidebar() {
         },
     });
 
-    const { _id } = data?.data?.user || {}
-    if (_id) {
-        const newData = data?.data?.user
-        delete newData._v
-        dispatch(setUserInfo(newData))
-    }
-
     return (
         <>
             {showLogoutAlert &&
                 <DialogueConfirm
+                    key="logoutAccount"
                     onCancel={() => {
                         setTimeout(() => {
                             setShowLogoutAlert(false)
@@ -107,7 +94,7 @@ export default function Sidebar() {
                     {...swipeHandlers}
                     style={{ top: top + "vh", width: isLgSize ? sidebarWidthPx : '100vw' }}
                     className={`z-[9999] flex ${top === 0 ? 'flex-col' : 'flex-col-reverse'} bg-gray-800 text-gray-400 w-full fixed left-0 h-[70vh] lg:h-[100vh] transition-[.4s]`}>
-                    {!isLoading ?
+                    {token ?
                         (<Fragment>
                             <div className="h-full absolute top-0 "></div>
                             <div className="flex items-center justify-between h-[10vh] w-full">
@@ -190,8 +177,8 @@ export default function Sidebar() {
                 <div style={{
                     'left': isLgSize ? sidebarWidthPx : 0,
                     'width': isLgSize ? `calc(100% - ${sidebarWidthPx}px)` : '100vw'
-                }} className='flex items-center justify-center absolute top-[10vh] h-[100vh]'>
-                    {isLoading ?
+                }} className={`flex items-center justify-center absolute top-[${isLgSize ? "0" : "10"}vh] min-h-[100vh] h-auto`}>
+                    {!token ?
                         <SpinnerLoading size="3rem" />
                         :
                         <Outlet />

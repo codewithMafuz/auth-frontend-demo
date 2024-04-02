@@ -1,5 +1,5 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
-import { UserRegistrationTypes, UserLoginTypes, UserUpdateMultipleDataTypes, UserChangePasswordTypes } from '../models/user.model';
+import { UserRegistrationTypes, UserLoginTypes, UserChangePasswordTypes } from '../models/user.model';
 import { getToken } from './tokenServices';
 
 export const userApi = createApi({
@@ -8,7 +8,6 @@ export const userApi = createApi({
         baseUrl: process.env.REACT_APP_BASE_API,
         prepareHeaders: (headers, { getState }) => {
             const token = getState()['root']['token'] || getToken()
-            console.log(token)
             if (token) {
                 headers.set('Authorization', 'Bearer ' + token)
             }
@@ -59,23 +58,30 @@ export const userApi = createApi({
                 },
             }),
         }),
-        userUpdateData: builder.mutation<UserUpdateMultipleDataTypes, any>({
+        userUpdateData: builder.mutation({
             query: (userNewDatas) => ({
                 url: '/update-data',
                 method: 'POST',
                 body: userNewDatas,
             }),
         }),
-        userUpdatePassword: builder.mutation<UserChangePasswordTypes, any>({
+        userUpdatePassword: builder.mutation<any, UserChangePasswordTypes>({
             query: (data) => ({
                 url: '/update-password',
                 method: 'POST',
                 body: data,
             }),
         }),
+        userDeleteAccount: builder.mutation<any, { password: string }>({
+            query: (data) => ({
+                url: '/delete-user',
+                method: 'POST',
+                body: data
+            })
+        })
     }),
 });
 
-export const { useUserRegistrationMutation, useUserLoginMutation, useUserForgotPasswordMutation, useUserResetPasswordMutation, useUserLoggedInQuery, useLazyUserLoggedInQuery, useUserSignupCompleteQuery, useUserUpdateDataMutation, useUserUpdatePasswordMutation } = userApi;
+export const { useUserRegistrationMutation, useUserLoginMutation, useUserForgotPasswordMutation, useUserResetPasswordMutation, useUserLoggedInQuery, useLazyUserLoggedInQuery, useUserSignupCompleteQuery, useUserUpdateDataMutation, useUserUpdatePasswordMutation, useUserDeleteAccountMutation } = userApi;
 
 

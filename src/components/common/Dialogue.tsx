@@ -2,31 +2,43 @@ import { Fragment, useRef, useState } from 'react'
 import { Dialog, Transition } from '@headlessui/react'
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 
+
+
 const DialogueConfirm = ({
   title = 'Logout your account',
   subtitle = 'Are you sure you want to logout your account',
   confirmBtnTxt = 'Logout',
   cancelBtnTxt = 'Cancel',
-  onConfirm = () => { },
+  inputField = {
+    show: false,
+    type: 'text',
+  },
+  onConfirm = (inputValue) => {
+  },
   onCancel = () => { }
 }: {
-  title?: string,
-  subtitle?: string,
-  confirmBtnTxt?: string,
-  cancelBtnTxt?: string,
-  onConfirm?: Function,
-  onCancel?: Function
+  title?: string;
+  subtitle?: string;
+  confirmBtnTxt?: string;
+  cancelBtnTxt?: string;
+  inputField?: {
+    show?: boolean | null;
+    type?: string;
+  };
+  onConfirm?: (inputValue: any) => void;
+  onCancel?: () => void;
 }
 ) => {
   const [open, setOpen] = useState(true)
-
+  const [inputFieldVal, setInputValue] = useState('')
   const cancelButtonRef = useRef(null)
 
   return (
-    <Transition.Root show={open} as={Fragment}>
-      <Dialog onBlur={() => {
+    <Transition appear show={open} as={Fragment}>
+      <Dialog as="div" className="relative z-10" initialFocus={cancelButtonRef} onClose={() => {
+        setOpen(false)
         onCancel()
-      }} as="div" className="relative z-10" initialFocus={cancelButtonRef} onClose={setOpen}>
+      }}>
         <Transition.Child
           as={Fragment}
           enter="ease-out duration-300"
@@ -64,6 +76,26 @@ const DialogueConfirm = ({
                         <p className="text-sm text-gray-500">
                           {subtitle}
                         </p>
+
+                        {inputField?.show &&
+                          <Dialog.Panel
+                            id="inputFieldBox"
+                            className="my-4">
+                            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="inputFieldElm">
+                              Your Account Password
+                            </label>
+                            <input
+                              value={inputFieldVal}
+                              onChange={(ev) => {
+                                setInputValue((ev.target.value).trim())
+                              }}
+                              className="shadow appearance-none border border-gray-700 rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline" id="inputFieldElm"
+                              type={inputField.type || "text"}
+                              placeholder="******************"
+                              name="inputFieldElm"
+                            />
+                          </Dialog.Panel>}
+
                       </div>
                     </div>
                   </div>
@@ -73,8 +105,7 @@ const DialogueConfirm = ({
                     type="button"
                     className={`inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-gray-200 shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto`}
                     onClick={() => {
-                      onConfirm()
-
+                      onConfirm(inputFieldVal.trim())
                       setOpen(false)
                     }}
                   >
@@ -97,8 +128,17 @@ const DialogueConfirm = ({
           </div>
         </div>
       </Dialog>
-    </Transition.Root>
+    </Transition>
   )
 }
+
+
+
+
+
+
+
+
+
 
 export default DialogueConfirm

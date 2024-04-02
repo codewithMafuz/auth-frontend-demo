@@ -3,22 +3,29 @@ import { createSlice } from '@reduxjs/toolkit';
 export const userSlice = createSlice({
     name: 'user',
     initialState: {
-        token: null,
-        _id: '',
-        name: '',
-        headline: '',
+        _id: null,
+        name: null,
+        headline: null,
+        profilePath: null,
+        profileSrc: null,
     },
     reducers: {
         setUserInfo: (state, action) => {
-            const updatable = action.payload
-            state._id = updatable._id || ''
-            state.name = updatable.name || ''
-            state.headline = updatable.headline || ''
+            const setObj = action.payload;
+            const updatedState = { ...state };
+            for (const prop in setObj) {
+                if (setObj[prop] && (state[prop] !== setObj[prop])) {
+                    updatedState[prop] = setObj[prop];
+                }
+            }
+            return updatedState;
         },
-
+        setUserId: (state, action) => {
+            state._id = action.payload;
+        },
     },
 });
 
-export const { setUserInfo } = userSlice.actions;
+export const { setUserInfo, setUserId } = userSlice.actions;
 
 export default userSlice.reducer;

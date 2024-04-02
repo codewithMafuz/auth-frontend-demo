@@ -5,6 +5,10 @@ import { useUserRegistrationMutation } from '../../../../services/api';
 import TimerComponent from '../../../common/TimerComponent';
 import { useDispatch } from 'react-redux';
 import { reRenderToast, setToastContainerOptions, setToastContent } from '../../../../toastSlice';
+import { FiEye, FiEyeOff } from 'react-icons/fi';
+import { isBothObjectSame } from '../../../../services/commonFunctions';
+import CheckLoggedIn from '../../../../services/CheckLoggedIn';
+import { setUserInfo } from '../../userSlice';
 
 const Signup: React.FC = () => {
     const navigate = useNavigate();
@@ -15,10 +19,9 @@ const Signup: React.FC = () => {
     const [password, setPassword] = useState<string>('');
     const [agreeTerms, setAgreeTerms] = useState<boolean>(false)
     const [showPassword, setShowPassword] = useState<boolean>(false);
-    const [validationErrorMsg, setValidationErrorMsg] = useState<string | boolean>(false)
     const [serverMsg, setServerMsg] = useState<string | boolean>(false)
-    const msgToShow = serverMsg ? serverMsg : validationErrorMsg
     const [msgShowType, setMsgShowType] = useState<'error' | 'success' | 'info'>('error')
+    const msg = { content: serverMsg, msgType: msgShowType, msgRenderedTime: 0 }
     const [submitDisability, setSubmitDisability] = useState<boolean>(true)
     const [sentConfirmationEmail, setSentConfirmationEmail] = useState<any>(false)
     const [prevRegisterableData, setPrevRegisterableData] = useState({})
@@ -27,10 +30,11 @@ const Signup: React.FC = () => {
 
 
     useEffect(() => {
-        dispatch(setToastContent(msgToShow))
-        dispatch(setToastContainerOptions({ type: msgShowType }))
-    }, [msgToShow])
-
+        if (msg.content) {
+            dispatch(setToastContent(msg.content))
+            dispatch(setToastContainerOptions({ type: msg.msgType }))
+        }
+    }, [JSON.stringify(msg)])
     useEffect(() => {
         setPrevRegisterableData({})
         setSubmitDisability(((email.length > 1 && password.length > 8 && name.length > 1) && !isLoading) ? false : true)
@@ -58,43 +62,40 @@ const Signup: React.FC = () => {
                 password: password,
             });
             if (validationErrors) {
-                setValidationErrorMsg('invalid ' + Object.keys(validationErrors).join(', '))
+                setServerMsg('invalid ' + Object.keys(validationErrors).join(', '))
                 return
             }
-            try {
-                if (Object.values(registerableData).join('') === Object.values(prevRegisterableData).join('')) {
-                    return
-                }
-                setPrevRegisterableData(registerableData)
-                const response: any = await register(registerableData)
-                console.log(response)
-                const { data, error } = response
-                console.log(data)
-                if (!error && data?.status === 'OK') {
-                    setMsgShowType('success')
-                    setServerMsg(data.message)
-                    console.log('---', data.data.confLinkExpInMs)
-                    setSentConfirmationEmail(Math.round((data.data.confLinkExpInMs) / 1000))
-                } else {
-                    setServerMsg(data?.message || 'could not signup, try again')
-                }
-            } catch (error) {
-                console.log(error)
-                setServerMsg('something went wrong, try again')
-            } finally {
-                setSubmitDisability(false)
+            if (isBothObjectSame(registerableData, prevRegisterableData)) {
+                return
+            }
+            setPrevRegisterableData(registerableData)
+            const response: any = await register(registerableData)
+            // console.log(response)
+            const { data, error } = response
+            // console.log(data)
+            if (!error && data?.status === 'OK') {
+                setMsgShowType('success')
+                setServerMsg(data.message)
+                // console.log('---', data.data.confLinkExpInMs)
+                setSentConfirmationEmail(Math.round((data.data.confLinkExpInMs) / 1000))
+            } else {
+                setServerMsg(data?.message || 'could not signup, try again')
             }
         } catch (error) {
-            console.log(error)
+            // console.log(error)
             setServerMsg('something went wrong, try again')
         } finally {
-            dispatch(reRenderToast())
             setSubmitDisability(false)
         }
     }
 
     return (
         <div className='flex min-h-screen flex-1 flex-col justify-center px-6 py-6 lg:px-8'>
+            <CheckLoggedIn actionOnIfLoggedIn={(user) => {
+                const { name, email, _id, profilePath } = user
+                dispatch(setUserInfo({ name, email, _id, profilePath }))
+                navigate('/me')
+            }} />
             <div className='sm:mx-auto sm:w-full sm:max-w-sm'>
                 <h2 className='mt-5 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900'>Signup</h2>
             </div>
@@ -132,7 +133,7 @@ const Signup: React.FC = () => {
                                 <input
                                     onChange={(ev) => {
                                         setEmail(ev.target.value.trim());
-                                        setValidationErrorMsg(false)
+                                        setServerMsg(false)
                                     }}
                                     value={email}
                                     id='email'
@@ -154,7 +155,7 @@ const Signup: React.FC = () => {
                                 <input
                                     onChange={(ev) => {
                                         setPassword(ev.target.value.trim());
-                                        setValidationErrorMsg(false)
+                                        setServerMsg(false)
                                     }}
                                     value={password}
                                     id='password'
@@ -164,14 +165,21 @@ const Signup: React.FC = () => {
                                     required
                                     className='focus:outline-[1px] focus:outline-gray-200 pl-1.5 block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6'
                                 />
-                                <i
-                                    onClick={() => {
-                                        setShowPassword(!showPassword);
-                                        setValidationErrorMsg(false)
-                                    }}
-                                    title={(showPassword ? 'hide' : 'show') + ' password'}
-                                    className={'cursor-pointer absolute top-2 right-2 text-blue-500 fa-solid fa-eye' + (showPassword ? '-slash' : '')}
-                                ></i>
+                                {showPassword ?
+                                    <FiEye
+                                        onClick={() => {
+                                            setShowPassword(!showPassword);
+                                        }}
+                                        title={(showPassword ? 'hide' : 'show') + ' password'}
+                                        className='cursor-pointer absolute top-2 right-2 text-blue-500'
+                                    /> :
+                                    <FiEyeOff
+                                        onClick={() => {
+                                            setShowPassword(!showPassword);
+                                        }}
+                                        title={(showPassword ? 'hide' : 'show') + ' password'}
+                                        className='cursor-pointer absolute top-2 right-2 text-blue-500'
+                                    />}
                             </div>
                         </div>
                         <label htmlFor='agreeTerms' className='select-none flex items-center justify-left ml-3 text-sm font-medium leading-6 text-gray-900'>

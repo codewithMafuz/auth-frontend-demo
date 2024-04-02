@@ -3,24 +3,28 @@ import { useUserForgotPasswordMutation } from '../../../../services/api';
 import { checkValidation } from '../../../../services/validation-help';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
-import { reRenderToast, setToastContainerOptions, setToastContent } from '../../../../toastSlice';
+import { setToastContainerOptions, setToastContent } from '../../../../toastSlice';
+import CheckLoggedIn from '../../../../services/CheckLoggedIn';
+import { setUserInfo } from '../../userSlice';
 
 const ForgetPassword: React.FC = () => {
     const navigate = useNavigate();
     const dispatch = useDispatch()
     const [email, setEmail] = useState('');
-    const [error, setError] = useState<any>();
-    const [msgShowType, setMsgShowType] = useState("error")
+    const [msg, setMsg] = useState<any>({ content: '', msgType: 'error', msgRenderedTime: 0 })
+
+
 
     const [forgotpassword, { isLoading, isError }] = useUserForgotPasswordMutation();
-    const [serverResponseError, setServerResponseError] = useState(false);
     const [prevEmail, setPrevEmail] = useState<string>('')
 
     useEffect(() => {
-        dispatch(setToastContent(serverResponseError || error))
-        dispatch(setToastContainerOptions({ type: msgShowType }))
-    }, [serverResponseError, error])
+        if (msg.content) {
+            dispatch(setToastContainerOptions({ type: msg.msgType }))
+            dispatch(setToastContent(msg.content))
+        }
 
+    }, [JSON.stringify(msg)])
 
     useEffect(() => {
         if (email.trim().length > 10) {
@@ -37,35 +41,47 @@ const ForgetPassword: React.FC = () => {
         });
 
         if (errors) {
-            setError('Invalid - ' + Object.keys(errors).join(', '));
+            setMsg((prev: any) => ({
+                ...prev, msgRenderedTime: Date.now(), content: 'Invalid - ' + Object.keys(errors).join(', '), msgType: "error"
+            }));
             return;
         }
         try {
             if (email !== prevEmail) {
                 setPrevEmail(email)
-                const response: any = await forgotpassword({ email });
+                const response: any = await forgotpassword({ email: email.trim() });
+                // console.log(response)
                 const { status, message } = response.data;
                 if (status === 'Failed') {
-                    setServerResponseError(message);
+                    setMsg((prev: any) => ({
+                        ...prev, msgRenderedTime: Date.now(), content: message, msgType: "error"
+                    }));
                     return;
                 }
-                setMsgShowType('success')
-                setError('check your email, we have sent an reset password link to your email');
-                setServerResponseError(false);
+                setMsg((prev: any) => ({
+                    ...prev, msgRenderedTime: Date.now(), content: 'Check your email, we have sent an reset password link to your email', msgType: "success"
+                }));
             }
         } catch (error) {
-            console.log('status', error);
-        } finally {
-            dispatch(reRenderToast())
+            setMsg((prev: any) => ({
+                ...prev, msgRenderedTime: Date.now(), content: 'Failed', msgType: "error"
+            }));
+
         }
     };
 
     if (isError) {
-        console.log('isError triggered');
+        // console.log('isError triggered');
     }
 
     return (
         <div className='flex min-h-screen flex-1 flex-col justify-center px-6 py-6 lg:px-8'>
+            <CheckLoggedIn actionOnIfLoggedIn={(user) => {
+                const { name, email, _id, profilePath } = user
+                dispatch(setUserInfo({ name, email, _id, profilePath }))
+                navigate('/me')
+            }} />
+
             <div className='sm:mx-auto sm:w-full sm:max-w-sm'>
 
                 <h2 className='mt-5 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900'>Forget Password</h2>

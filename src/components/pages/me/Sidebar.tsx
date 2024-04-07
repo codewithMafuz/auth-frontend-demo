@@ -7,6 +7,9 @@ import { useDispatch, useSelector } from "react-redux";
 
 import DialogueConfirm from "../../common/Dialogue";
 import { setUserToken } from "../../../rootSlice";
+import Footer from "../../Footer";
+const setSidebarPxLocal = (px) => localStorage.setItem('sidebarWidth', JSON.stringify(px))
+
 
 export default function Sidebar() {
     const navigate = useNavigate()
@@ -14,9 +17,12 @@ export default function Sidebar() {
     const location = useLocation()
 
     const token = useSelector((state: any) => state.root.token)
+    const sidebarSizeContainerRef = useRef<any>()
+    const [holdClicked, setHoldClicked] = useState<boolean>(false)
     const asideRef = useRef()
     const smScreenSidebarPos = -60
-    const [sidebarWidthPx, setSidebarWidthPx] = useState<number>(240)
+    const getSidebarPxLocal = localStorage.getItem('sidebarWidth')
+    const [sidebarWidthPx, setSidebarWidthPx] = useState<number>(getSidebarPxLocal ? JSON.parse(getSidebarPxLocal) : 240)
     const [isLgSize, setIsLgSize] = useState(window.innerWidth >= 1024)
     const [showLogoutAlert, setShowLogoutAlert] = useState(false)
 
@@ -50,6 +56,14 @@ export default function Sidebar() {
         }
     };
 
+    const handleMouseMoveSidebar = (ev) => {
+        if (holdClicked) {
+            const newPx = sidebarWidthPx + ev.movementX
+            if (newPx > 200 && newPx < 460) {
+                setSidebarWidthPx(newPx)
+            }
+        }
+    }
 
     useEffect(() => {
         if (!token) {
@@ -88,12 +102,32 @@ export default function Sidebar() {
                         dispatch(setUserToken(null))
 
                     }} />}
-            <div className="relative">
+            <div className="relative select-none ">
                 <aside
                     ref={asideRef}
                     {...swipeHandlers}
                     style={{ top: top + "vh", width: isLgSize ? sidebarWidthPx : '100vw' }}
-                    className={`z-[9999] flex ${top === 0 ? 'flex-col' : 'flex-col-reverse'} bg-gray-800 text-gray-400 w-full fixed left-0 h-[70vh] lg:h-[100vh] transition-[.4s]`}>
+                    className={`z-[9998] flex ${top === 0 ? 'flex-col' : 'flex-col-reverse'} bg-gray-800 text-gray-400 w-full fixed left-0 h-[70vh] lg:h-[100vh]`}>
+                    {isLgSize &&
+                        <div
+                            title="Move slowly right or left to change sidebar width"
+                            ref={sidebarSizeContainerRef}
+                            onMouseOut={() => {
+                                setHoldClicked(false)
+                            }}
+                            onMouseDown={() => {
+                                setHoldClicked(true)
+                            }}
+                            onMouseUp={() => {
+                                setHoldClicked(false)
+                                setSidebarPxLocal(sidebarWidthPx)
+                            }}
+                            onMouseMove={handleMouseMoveSidebar}
+                            className={"absolute z-[9999] right-0 h-[100vh] bg-transparent w-[8px] hover:bg-gray-500 transition-colors duration-200 cursor-ew-resize"}>
+                            {''}
+
+                        </div>
+                    }
                     {token ?
                         (<Fragment>
                             <div className="h-full absolute top-0 "></div>
@@ -160,6 +194,11 @@ export default function Sidebar() {
                                         <button className="text-[1.4rem] rounded-full text-gray-100 block hover:text-gray-100 bg-opacity-50">Logout</button>
                                     </div>
                                 </div>
+                                {((!isLgSize && isOpenedSidebar) || (isLgSize)) &&
+                                    <div className="w-full flex items-center justify-center">
+                                        <Footer />
+                                    </div>}
+
                             </nav>
                             <div className={top === smScreenSidebarPos ? "hidden" : "lg:hidden absolute bottom-0 left-1/2 transform -translate-x-1/2 flex items-center justify-center py-2"}>
                                 <MdKeyboardDoubleArrowUp onClick={() => {
